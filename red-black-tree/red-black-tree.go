@@ -19,6 +19,19 @@ const (
 	BLACK
 )
 
+/*
+if you want to init a redblacktree to check if
+it could work, you could run code below
+
+	T := rbt.Tree_init()
+	for i, j := 4, 6; i >= 0; i, j = i-1, j+1 {
+		rbt.Insert_node(T, i)
+		rbt.Insert_node(T, j)
+	}
+	rbt.Print(T.Root)
+expected  return should be 1 to 10.
+*/
+
 func Tree_init() *RedBlackTree {
 	T := new(RedBlackTree)
 	return T
