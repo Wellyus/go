@@ -6,5 +6,5 @@ import (
 )
 
 func main() {
-	sy.Fish()
+	sy.Phy_eat()
 }
