@@ -5,21 +5,19 @@ import (
 	"sync"
 )
 
-// phylosiphors eating on a table
-var lock_eat sync.Mutex
-var cond_eat [5]sync.Cond
-var chop = make(map[int]bool, 5)
+var lock_ sync.Mutex
+var cond_ = sync.NewCond(&lock_)
+var ok = make([]bool, 5)
 
 func eat_init() {
-	for i := range chop {
-		chop[i] = true
-		cond_eat[i] = sync.NewCond(&lock_eat)
+	for i := range ok {
+		ok[i] = true
 	}
 }
 
 // return the number of left chopstick of phylosi id
 func left(id int) int {
-	return (id - 1 + 5) % 5
+	return id
 }
 
 // return the number of right chopstick of phylosi id
@@ -30,26 +28,42 @@ func right(id int) int {
 func eat(id int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
-		cond_eat[id].L.Lock()
-		for chop[left(id)] == false || chop[right(id)] == false {
-			cond_eat[id].Wait()
+		// exclusion
+		cond_.L.Lock()
+		for !(ok[left(id)] && ok[right(id)]) {
+			cond_.Wait()
 		}
-		chop[left(id)] = false
-		chop[right(id)] = false
-		fmt.Printf("I'm %d phylosiphor and I'm eating now!\n", id)
-		chop[left(id)] = true
-		chop[right(id)] = true
-		cond_eat[id].Broadcast()
-		cond_eat[id].L.Unlock()
+		//change condition, other goroutines always could not get chop1 or chop 2
+		//before myself changes the state of chop1 and chop2
+		//others but might could get other chops excepte these two
+		ok[left(id)] = false  //chop1
+		ok[right(id)] = false //chop2
+		// allow other goroutines to come into critical section
+		cond_.L.Unlock()
+
+		//if I didn't change the state of condition, I couldn't unlock before my eating
+		//cause I may couldn't have chopsticks anymore
+		//eating,
+		fmt.Printf("I'm %d phylosiphor, I'm eating now!\n", id)
+
+		//after eating I wanna put down chopsitcks I' have used and signal to other goroutines
+		cond_.L.Lock()
+		ok[left(id)] = true
+		ok[right(id)] = true
+		//to get it!
+		cond_.Broadcast()
+		cond_.L.Unlock()
 	}
 }
 
-func phy_eat() {
+func Phy_eat() {
 	eat_init()
+	// wait for 5 goroutines coming back
 	var wg sync.WaitGroup
 	for i := 0; i < 5; i++ {
 		wg.Add(1)
 		go eat(i, &wg)
 	}
+	// wait for 5 goroutines coming back
 	wg.Wait()
 }
